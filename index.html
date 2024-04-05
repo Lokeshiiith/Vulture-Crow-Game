@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="text/javascript" src="d3-7.6.1\package\dist\d3.min.js"></script>
+    <script type="text/javascript" src="./event.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="./graph.js"></script>
+</head>
+
+<body>
+    <div></div>
+    <!-- add a page for seeing instruction -->
+    <button style="background-color: #4CAF50; /* red */
+      border: none;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 8px;">
+        <a href="https://www.whatdowedoallday.com/kaooa/" style="color: white; text-decoration: none;">Instruction to
+            check to play</a>
+    </button>
+    <p><span class="interactive-word">Yellow</span> shows in which direction the vulture can jump.</p>
+    <script>
+        (function (console) {
+            let data = '';
+            console.logData = function (logData) {
+                data = `${data}${(new Date()).toISOString()} ${logData} \n`;
+            }
+            console.save = function (filename) {
+                if (!data) {
+                    console.error('Console.save: No data')
+                    return;
+                }
+
+                if (!filename) filename = 'console.txt'
+
+                if (typeof data === "object") {
+                    data = JSON.stringify(data, undefined, 4)
+                }
+
+                var blob = new Blob([data], { type: 'text/json' }),
+                    e = document.createEvent('MouseEvents'),
+                    a = document.createElement('a')
+
+                a.download = filename
+                a.href = window.URL.createObjectURL(blob)
+                a.dataset.downloadurl = ['text/json', a.download, a.href].join(':')
+                e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+                a.dispatchEvent(e)
+            }
+        })(console)
+        var g = new Graph(10);
+        const pitStatus = {};
+        const eventEmitter = new EventEmitter();
+
+        var vertices = ['pit1', 'pit2', 'pit3', 'pit4', 'pit5', 'pit6', 'pit7', 'pit8', 'pit9', 'pit10'];
+        for (var i = 0; i < vertices.length; i++) {
+            g.addVertex(vertices[i]);
+        }
+
+        //pit1
+        g.addEdge('pit1', 'pit7');
+        g.addEdge('pit1', 'pit8');
+
+        //pit2
+        g.addEdge('pit2', 'pit7');
+        g.addEdge('pit2', 'pit9');
+
+        //pit3
+        g.addEdge('pit3', 'pit8');
+        g.addEdge('pit3', 'pit10');
+
+        //pit4
+        g.addEdge('pit4', 'pit9');
+        g.addEdge('pit4', 'pit6');
+
+        //pit5
+        g.addEdge('pit5', 'pit10');
+        g.addEdge('pit5', 'pit6');
+
+        //pit6
+        g.addEdge('pit6', 'pit10');
+        g.addEdge('pit6', 'pit9');
+
+        //pit7
+        g.addEdge('pit7', 'pit8');
+        g.addEdge('pit7', 'pit9');
+
+        //pit8
+        g.addEdge('pit8', 'pit10');
+        // g.addEdge('pit8', 'pit7');
+
+        //pit9
+        // g.addEdge('pit9', 'pit6');
+        // g.addEdge('pit9', 'pit7');
+
+        //pit10
+        // g.addEdge('pit10', 'pit6');
+        // g.addEdge('pit10', 'pit8');
+
+        g.printGraph();
+
+        let crowChance = true;
+        let crowsKilled = 0;
+
+        var initialBirdCordinates = [
+            { x: 800, y: 100, id: 'crow1' },
+            { x: 800, y: 160, id: 'crow2' },
+            { x: 800, y: 220, id: 'crow3' },
+            { x: 800, y: 280, id: 'crow4' },
+            { x: 800, y: 340, id: 'crow5' },
+            { x: 800, y: 400, id: 'crow6' },
+            { x: 800, y: 460, id: 'crow7' },
+        ];
+        // var initialCordinates = [
+        //     { x: 300, y: 60, id: 'pit1' },
+        //     { x: 80, y: 220, id: 'pit2' },
+        //     { x: 520, y: 220, id: 'pit3' },
+        //     { x: 150, y: 500, id: 'pit4' },
+        //     { x: 450, y: 500, id: 'pit5' },
+        //     { x: 307, y: 379, id: 'pit6' },
+        //     { x: 250, y: 212, id: 'pit7' },
+        //     { x: 350, y: 220, id: 'pit8' },
+        //     { x: 209, y: 320, id: 'pit9' },
+        //     { x: 390, y: 320, id: 'pit10' },
+        // ];
+
+        var initialCordinates = [
+            { x: 300, y: 60, id: 'pit1' },
+            { x: 80, y: 220, id: 'pit2' },
+            { x: 520, y: 220, id: 'pit3' },
+            { x: 150, y: 500, id: 'pit4' },
+            { x: 450, y: 500, id: 'pit5' }, //fit
+            { x: 300, y: 386.48649, id: 'pit6' }, //done
+            { x: 245.45455, y: 220, id: 'pit7' }, //done
+            { x: 354.54545, y: 220, id: 'pit8' }, //done
+            { x: 211.52344, y: 320, id: 'pit9' },
+            { x: 390, y: 320, id: 'pit10' },
+        ];
+
+        var linesData = [
+            { x1: 300, y1: 60, x2: 450, y2: 500 },
+            { x1: 300, y1: 60, x2: 150, y2: 500 },
+            { x1: 150, y1: 500, x2: 520, y2: 220 },
+            { x1: 520, y1: 220, x2: 80, y2: 220 },
+            { x1: 80, y1: 220, x2: 450, y2: 500 },
+        ]
+
+        function getCordinatesOfPit(pit) {
+            const cordinates = {};
+            initialCordinates.forEach(item => {
+                if (item.id === pit) {
+                    cordinates.x = item.x;
+                    cordinates.y = item.y;
+                }
+            })
+            return cordinates;
+        }
+
+        var validVultureTarget = {};
+
+        function findeEmptyColinearNeighbour(currentPit, colinnearPit) {
+            const neighbours = g.getNeighbours(currentPit);
+            const colinnearPoint = {};
+            const currentPitCordinates = getCordinatesOfPit(currentPit);
+            const colinnearPitCordinates = getCordinatesOfPit(colinnearPit);
+            neighbours.forEach(item => {
+                const tempPointCordinates = getCordinatesOfPit(item);
+                if (pitStatus[item])
+                    return;
+                const area = areaOfTriangle(currentPitCordinates, colinnearPitCordinates, tempPointCordinates);
+                if (area < 50) {
+                    colinnearPoint.area = area;
+                    colinnearPoint.id = item;
+                    // validVultureTarget.push({id: `#${item}`, relation: 'jumper', target: });
+                }
+            })
+            return colinnearPoint;
+        }
+
+        function highlightValidMoveForVulture(pitId) {
+            const neighbours = g.getNeighbours(pitId);
+            neighbours?.forEach(item => {
+                if (pitStatus[item]) {
+                    const nearestPit = findeEmptyColinearNeighbour(item, pitId);
+                    if (nearestPit.id) {
+                        validVultureTarget[`#${nearestPit.id}`] = { relation: 'target', target: item };
+                        d3.select(`#${nearestPit.id}`).attr('fill', 'yellow')
+                    }
+                } else {
+                    d3.select(`#${item}`).attr('fill', 'yellow');
+                    validVultureTarget[`#${item}`] = { relation: 'neighbour' };
+                }
+            });
+        }
+
+        function unHighlight() {
+            vertices?.forEach(item => d3.select(`#${item}`).attr('fill', 'white'));
+        }
+
+        function vultureDragger() {
+            let initialPosition = {};
+            function vultureDragStarted(event, d) {
+                initialPosition.x = event.x;
+                initialPosition.y = event.y;
+                if (!crowChance) {
+                    validVultureTarget = {};
+                    highlightValidMoveForVulture(getPit('vulture'))
+                }
+            };
+            function vultureDragged(event, d) {
+                let circle = d3.select(this);
+                if (!crowChance)
+                    circle.raise().attr("cx", d.x = event.x).attr("cy", d.y = event.y);
+            };
+            function vultureDragended(event, d) {
+                if (!crowChance) {
+                    unHighlight();
+                    const circle = d3.select(this).classed("active", false);
+                    const x = getX(circle);
+                    const y = getY(circle);
+
+                    const nearestMember = findNearestMember(x, y);
+                    if (nearestMember.dist < 60) {
+                        const nearestMemberId = `#${nearestMember.id}`;
+                        let pitId = getPit(circle.attr('id'));
+                        const preCalculatedTarget = validVultureTarget[nearestMemberId];
+                        if (preCalculatedTarget || !Object.values(pitStatus).includes(circle.attr('id'))) {
+                            const nearestPit = d3.select(nearestMemberId);
+                            goToPoint(circle, { x: getX(nearestPit), y: getY(nearestPit) }, d);
+
+                            delete pitStatus[pitId];
+                            pitStatus[nearestMember.id] = circle.attr('id');
+                            console.logData(`Vulture moved to ${nearestMemberId}`);
+                            if (preCalculatedTarget?.relation === 'target') {
+                                const targetCrow = pitStatus[preCalculatedTarget.target];
+                                console.logData(`Vulture killed ${targetCrow}`)
+                                delete pitStatus[preCalculatedTarget.target];
+                                const target = d3.select(`#${targetCrow}`);
+                                crowsKilled++;
+                                target.remove();
+                                if (crowsKilled >= 3) {
+                                    alert("Vulture won");
+                                }
+                            }
+
+                            crowChance = !crowChance
+                            eventEmitter.emit("TURN_CHANGED", crowChance);
+                        } else {
+                            goToPoint(circle, initialPosition, d);
+                        }
+                    } else {
+                        goToPoint(circle, initialPosition, d);
+                    }
+                }
+            };
+            return d3.drag()
+                .on("start", vultureDragStarted)
+                .on("drag", vultureDragged)
+                .on("end", vultureDragended);
+        }
+
+        function crowDragger() {
+            let initialPosition = {};
+            function dragstarted(event, d) {
+                initialPosition.x = event.x;
+                initialPosition.y = event.y;
+            };
+            function dragged(event, d) {
+                let circle = d3.select(this);
+                if (crowChance)
+                    circle.raise().attr("cx", d.x = event.x).attr("cy", d.y = event.y);
+            }
+            function dragended(event, d) {
+                if (crowChance) {
+                    const circle = d3.select(this);
+                    const x = getX(circle);
+                    const y = getY(circle);
+
+                    const nearestMember = findNearestMember(x, y);
+                    if (nearestMember.dist < 60) {
+                        if (pitStatus[nearestMember.id]) {  // if destination is already occupied
+                            goToPoint(circle, initialPosition, d);
+                            return;
+                        } else if (Object.values(pitStatus).includes(circle.attr('id'))) {   //if crow is already placed in a pit earlier
+                            let pitId = getPit(circle.attr('id'));
+                            let x = g.getNeighbours(pitId);
+                            if (!x.includes(nearestMember.id)) {  // if destination is not a neighbour
+                                goToPoint(circle, initialPosition, d);
+                                return;
+                            }
+                            delete pitStatus[pitId];
+                        }
+                        crowChance = !crowChance
+                        eventEmitter.emit("TURN_CHANGED", crowChance);
+
+                        const nearestPit = d3.select(`#${nearestMember.id}`);
+                        goToPoint(circle, { x: getX(nearestPit), y: getY(nearestPit) }, d);
+                        console.logData(`${circle.attr('id')} moved to ${nearestMember.id}`);
+                        pitStatus[nearestMember.id] = circle.attr('id');
+                    } else {
+                        goToPoint(circle, initialPosition, d);
+                    }
+                    validVultureTarget = {};
+                    highlightValidMoveForVulture(getPit('vulture'));
+                    if (Object.keys(validVultureTarget).length === 0 && getPit('vulture')) {
+                        unHighlight();
+                        alert('Crow won');
+                    }
+                    validVultureTarget = {};
+                    unHighlight();
+                }
+            };
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+
+        function goToPoint(element, cordinates, d) {
+            element.raise().attr("cx", d.x = cordinates.x).attr("cy", d.y = cordinates.y);
+        }
+
+        function getPit(id) {
+            return Object.keys(pitStatus).filter(item => pitStatus[item] === id)[0];
+        }
+
+        function getX(elem) {
+            return elem.attr('cx');
+        }
+
+        function getY(elem) {
+            return elem.attr('cy');
+        }
+
+        function findDistance(x1, y1, x2, y2) {
+            return Math.hypot(x2 - x1, y2 - y1);
+        }
+
+        function areaOfTriangle(a, b, c) {
+            return Math.sqrt(Math.abs(a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y)));
+        }
+
+        function findNearestMember(x, y) {
+            const currentRecord = {
+                dist: 100000,
+                id: initialCordinates[0].id
+            }
+            initialCordinates.forEach(item => {
+                const distance = findDistance(x, y, item.x, item.y);
+                if (distance < currentRecord.dist) {
+                    currentRecord.dist = distance;
+                    currentRecord.id = item.id;
+                }
+            })
+            return currentRecord;
+        }
+        var svg = d3.select('body')
+            .append('svg')
+            .attr('width', 1500)
+            .attr('height', 700)
+            .style('border', '2px solid');
+
+        eventEmitter.subscribe("TURN_CHANGED", (crowChance) => {
+            console.log("emitted");
+            d3.select('#x_var').text("Current Chance " + (crowChance ? 'Crow' : 'Vulture'));
+        });
+
+
+        // const svg = d3.select('body').selectAll('svg');
+        svg.selectAll('line')
+            .data(linesData)
+            .enter()
+            .append('line')
+            .attr('x1', d => d.x1)
+            .attr('y1', d => d.y1)
+            .attr('x2', d => d.x2)
+            .attr('y2', d => d.y2)
+            .attr('stroke', '#8E44AD')
+
+        svg.selectAll('circle1').data(initialCordinates)
+            .enter()
+            .append('circle')
+            .attr('r', 30)
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
+            .attr('id', (d, i) => (d.id))
+            .attr('stroke', 'black')
+            .attr('fill', 'white')
+
+        svg.selectAll('circle2')
+            .data(initialBirdCordinates)
+            .enter()
+            .append('circle')
+            .attr('r', 30)
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
+            .attr('id', (d, i) => (d.id))
+            .attr('stroke', 'black')
+            .attr('fill', 'black')
+            .call(crowDragger())
+
+        // render Vulture
+        svg.selectAll('circle3')
+            .data([{ x: 800, y: 540 }])
+            .enter()
+            .append('circle')
+            .attr('r', 30)
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y)
+            .attr('id', 'vulture')
+            .attr('stroke', 'black')
+            .attr('fill', 'red')
+            .call(vultureDragger())
+        d3.select("body").append("div")
+            .attr("id", "x_var")
+            .style("font-weight", "bold")
+            .text("Current Chance " + (crowChance ? 'Crow' : 'Vulture'))
+            .style("color", crowChance ? 'black' : 'red');
+        d3.select("body").append("button").attr("onclick", "console.save('logs.txt')").text("Download data");
+
+    </script>
+</body>
+
+</html>
